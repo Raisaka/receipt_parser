@@ -19,6 +19,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.nio.file.Files;
 import java.io.File;
 import java.text.ParseException;
@@ -29,14 +31,9 @@ import java.text.SimpleDateFormat;
 public class DetectTextGcs {
 	
 	
-	static String[] MARKETS = {"target", "walmart"};
+	static String[] MARKETS = {"WALMART", "TARGET"};
 	static List<String> MARKETS_LIST = Arrays.asList(MARKETS);
-	
-	static String[] STOPWORDS = {};
-	static List<String> STOPWORDS_LIST = Arrays.asList(STOPWORDS);
-	
-	static String[] SKIPWORDS = {};
-	static List<String> SKIPWORDS_LIST = Arrays.asList(STOPWORDS);
+
 
   public static void  main(String[] args) throws IOException {
     // TODO(developer): Replace these variables before running the sample.
@@ -46,16 +43,19 @@ public class DetectTextGcs {
     ByteString ayo = ByteString.copyFrom(fileContent);
     //Boolean test = is_Number("ab");
     //System.out.println(test);
-    Date date_num = parse_date("123");
+    //Date date_num = parse_date("123");
     
     
     //System.out.println(detectTextGcs(ayo));
-    detectTextGcs(ayo);
+    parse(detectTextGcs(ayo));
+    //find_date(detectTextGcs(ayo));
+    //find_market(detectTextGcs(ayo));
+    //System.out.println(price_list(detectTextGcs(ayo)));
     
   }
 
   // Detects text in the specified remote image on Google Cloud Storage.
-  public static void detectTextGcs(ByteString receipt) throws IOException {
+  public static List<EntityAnnotation> detectTextGcs(ByteString receipt) throws IOException {
     List<AnnotateImageRequest> requests = new ArrayList<>();
     
 
@@ -75,21 +75,25 @@ public class DetectTextGcs {
       
       List<EntityAnnotation> entityList= responses.get(0).getTextAnnotationsList();
       
+      
       for (AnnotateImageResponse res : responses) {
         if (res.hasError()) {
           System.out.format("Error: %s%n", res.getError().getMessage());
           //return null;
         }
+        
+        
 
-        // For full list of available annotations, see http://g.co/cloud/vision/docs
+        /*// For full list of available annotations, see http://g.co/cloud/vision/docs
         for (EntityAnnotation annotation : res.getTextAnnotationsList()) {
           System.out.format("Text: %s%n", annotation.getDescription());
           System.out.format("Position : %s%n", annotation.getBoundingPoly());
-        }
+        }*/
         
         //System.out.format("Text: %s%n", res.getTextAnnotationsList());
         //return res.getTextAnnotationsList(); 
       }
+      return entityList;
       
       //EntityAnnotation here = entityList.get(0);
       //List<Vertex> v_list = here.getBoundingPoly().getVerticesList();
@@ -100,64 +104,10 @@ public class DetectTextGcs {
     }
   }
   
-   public static Boolean is_Number(String input) {
-	  
-	  try {
-		Float try_this = Float.valueOf(input).floatValue();
-		return true;
-	  }
-	  catch(Exception e) {
-		  //System.out.println("Not a number");
-		  return false;
-	  }
-	  
-  }
    
-   
-   public static Boolean is_Decimal(String input) {
-	   float try_this = Float.valueOf(input).floatValue();
-	   float rounded = Math.round(try_this * 100.0f) / 100.0f;
+   private static String parse_date(String date) {
 	   
-	   if(!(is_Number(input))) {
-		   return false;
-	   }
-	   if(rounded != try_this) {
-		   return true;
-	   }
-	   else {
-		   return false;
-	   }
-   }
-   
-   public static Boolean is_Int(String str) 
-   { 
-       int val = 0;
-       float try_this = Float.valueOf(str).floatValue();
-	   float rounded = Math.round(try_this * 100.0f) / 100.0f;
-       //System.out.println("String = " + str); 
- 
-       // Convert the String 
-       try { 
-           val = Integer.parseInt(str); 
-       } 
-       catch (NumberFormatException e) { 
- 
-           // This is thrown when the String 
-           // contains characters other than digits 
-           //System.out.println("Invalid String");
-    	   return false;
-       } 
-       if(try_this == rounded) {
-		   return true;
-	   }
-	   else {
-		   return false;
-	   }
-   }
-   
-   private static Date parse_date(String date) {
-	   
-	   String[] formats = {"MM/dd/yyyy", "dd-M-yyyy hh:mm:ss", "yyyy/MM/dd"};
+	   String[] formats = {"MM/dd/yy","MM/dd/yyyy", "dd-M-yyyy", "yyyy/MM/dd"};
 	   String[] substrings = date.split(" ");
 	   
 	   for(String format:formats) {
@@ -166,7 +116,7 @@ public class DetectTextGcs {
 			   format_obj.setLenient(false);
 			   try {
 				   Date purch_date = format_obj.parse(substring);
-				   return purch_date;
+				   return format_obj.format(purch_date);
 			   }
 			   catch(ParseException e) {
 				   continue;
@@ -181,166 +131,227 @@ public class DetectTextGcs {
        
    }
    
-   public static Boolean is_Name(String name) {
-	   int counter = 0;
-	   
-	   for(int i = 0; i < name.length(); i++) {
-		   if(Character.isLetter(name.charAt(i))) {
-			   counter += 1;
-		   }
-	   }
-	   if (counter <= 2) {
-		   return false;
-	   }
-	   
-	   return true;
-   }
    
-   public static String is_Price(String val) {
-	   String p_val;
-	   if (val.contains(" ")){
-		   p_val = val.split(" ")[0];
-	   }
-	   else {
-		   p_val = val;
-	   }
-	   if(p_val.contains("$")) {
-		   p_val = p_val.replace("$", "");
-	   }
-	   if (is_Decimal(p_val)) {
-		   return p_val;
-	   }
-	   else {
-		   return null;
-	   }
+   public static String find_market(List<EntityAnnotation> cloud_response) {
 	   
-   }
-
-public static String check_market(String val) {
-	   String[] s_list = val.toLowerCase().split(" ");
-	   List<String> _slist = Arrays.asList(s_list);
+	   String[] res_list = cloud_response.get(0).getDescription().toUpperCase().split("\n");
+	   List<String> RES_LIST = Arrays.asList(res_list);
+	
+	   
 	   for(String market : MARKETS_LIST) {
-		   if(_slist.contains(market)) {
+		   if(RES_LIST.contains(market)) {
+			   System.out.println(market);
 			   return market;
 		   }
 	   }
 	   
-	   return null;
+	   return "NO MARKET FOUND";
+	   	
+   }
+   
+   public static String find_date(List<EntityAnnotation> cloud_response) {
+   
+   String[] res_list = cloud_response.get(0).getDescription().toLowerCase().split("\n");
+   List<String> RES_LIST = Arrays.asList(res_list);
+
+   
+   for(String annotation : RES_LIST) {
+	   if(parse_date(annotation)!=null) {
+		   String res = parse_date(annotation);
+		   System.out.println(res);
+		   return res;
+	   }
 	   
    }
    
-   public static String annotation_type(String text) {
-	   if(text.charAt(-1) == ',') {
-		   return "hanging";
-	   }
-	   if(is_Price(text) != null) {
-		   return "number";
-	   }
-	   if(parse_date(text)!=  null ) {
-		   return "date";
-	   }
-	   if(is_Int(text)) {
-		   return "int";
-	   }
-	   if(check_market(text) != null) {
-		   return "market";
-	   }
-	   return "text";
-   }
-   
-   public static void parse(List<EntityAnnotation> cloud_response){
-	   
-	   List<String> items, dates, stores = new ArrayList<>();
-	   List<Integer> seen_index = new ArrayList<>();
-	   String[] seen_prices;
-	   int parsed_y = 0;
-	   EntityAnnotation first_annote = cloud_response.get(0);
-	   int g_xmin, g_xmax, g_ymin, g_ymax;
-	   
-	   List<Integer> v_x = new ArrayList<>();
-	   List<Integer> v_y = new ArrayList<>();
-	   
-	   for(Vertex v : first_annote.getBoundingPoly().getVerticesList()) {
-		   v_x.add(v.getX());
-		   v_y.add(v.getY());
-		   
-	   }
-	   
-	   g_xmin = Collections.min(v_x);
-	   g_xmax = Collections.max(v_x);
-	   g_ymin = Collections.min(v_y);
-	   g_ymax = Collections.max(v_y);
-	   
-	   Boolean break_c = false;
-	   List<EntityAnnotation> sorted_annote = cloud_response.subList(1, cloud_response.size()-1);
-	   String curr_name = "";
-	   
-	   ListIterator<EntityAnnotation> it = sorted_annote.listIterator(0);
-	   
-	   while(it.hasNext()) {
-		   Boolean will_skip = false;
-		   String[] it_list = it.next().getDescription().toLowerCase().split(" ");
-		   List<String> _itlist = Arrays.asList(it_list);
-		   for(String stopword : STOPWORDS_LIST) {
-			   if(_itlist.contains(stopword)) {
-				   System.out.printf("Skipping %s",it.next().getDescription());
-				   break_c = true;
-			   }
-			   
-		   }
-		   
-		   if(will_skip) {
-			   continue;
-		   }
-		   if(seen_index.contains(it.nextIndex())) {
-			   continue;
-		   }
-		   String t_type = annotation_type(it.next().getDescription());
-		   System.out.printf("%s, type:%n%s", it.next().getDescription(), t_type);
-		   
-		   if(t_type == "text") {
-			   if(break_c) {
-				   continue;
-			   }
-			   
-			   List<String> id_x = new ArrayList<>();
-			   List<String> used_pr = new ArrayList<>();
-			   
-			   for(Vertex v : it.next().getBoundingPoly().getVerticesList()) {
-				   v_x.add(v.getX());
-				   v_y.add(v.getY());
-				   
-			   }
-			   
-			   int xmin = Collections.min(v_x);
-			   int xmax = Collections.max(v_x);
-			   int ymin = Collections.min(v_y);
-			   int ymax = Collections.max(v_y);
-			   
-			   if(xmax > g_xmax/2) {
-				   continue;
-			   }
-			   
-			   if((ymax + ymin)/2 < parsed_y) {
-				   continue;
-			   }
-			   int line_height = ymax-ymin;
-			   String curr_price = "";
-			   curr_name += it.next().getDescription();
-			   int curr_y = 0;
-			   int curr_x_price = 0;
-			   Boolean is_hanging = false;
-			   String p_desc = "";
-			   
-			   
-			   
-		   }
-	   }
-	   
-	   
-	   
-	   
-   }
-  
-  
+   return "NO DATE FOUND";
+   	
 }
+   
+   public static List<Integer> get_bounds_y(EntityAnnotation annotation) {
+	   
+	   List<Vertex> v_list = annotation.getBoundingPoly().getVerticesList();
+	   List<Integer> y_list = new ArrayList<>();
+	   
+	   for(Vertex v: v_list) {
+		   y_list.add(v.getY());
+	   }
+	   
+	   Integer max_y = Collections.max(y_list);
+	   Integer min_y = Collections.min(y_list);
+	   
+	   List<Integer> res = new ArrayList<>();
+	   res.add(min_y);
+	   res.add(max_y);
+	   
+	   return res;
+	 
+	   	
+	}
+   
+   public static Integer get_mid_point_x(EntityAnnotation annotation) {
+	   
+	   List<Vertex> v_list = annotation.getBoundingPoly().getVerticesList();
+	   List<Integer> x_list = new ArrayList<>();
+	   
+	   for(Vertex v: v_list) {
+		   x_list.add(v.getX());
+	   }
+	   
+	   Integer max_x = Collections.max(x_list);
+	   Integer min_x = Collections.min(x_list);
+	   
+	   Integer res = (max_x + min_x) / 2;
+	   
+	   return res;
+	 
+	   	
+	}
+   
+   public static Integer get_max_x(EntityAnnotation annotation) {
+	   
+	   List<Vertex> v_list = annotation.getBoundingPoly().getVerticesList();
+	   List<Integer> x_list = new ArrayList<>();
+	   
+	   for(Vertex v: v_list) {
+		   x_list.add(v.getX());
+	   }
+	   
+	   Integer max_x = Collections.max(x_list);
+	   //Integer min_y = Collections.min(x_list);
+	   
+	   //Integer res = (max_y + min_y) / 2;
+	   
+	   return max_x;
+	 
+	   	
+	}
+   
+   public static Integer get_min_x(EntityAnnotation annotation) {
+	   
+	   List<Vertex> v_list = annotation.getBoundingPoly().getVerticesList();
+	   List<Integer> x_list = new ArrayList<>();
+	   
+	   for(Vertex v: v_list) {
+		   x_list.add(v.getX());
+	   }
+	   
+	   //Integer max_x = Collections.max(x_list);
+	   Integer min_x = Collections.min(x_list);
+	   
+	   //Integer res = (max_y + min_y) / 2;
+	   
+	   return min_x;
+	 
+	   	
+	}
+   
+   public static List<EntityAnnotation> price_list(List<EntityAnnotation> cloud_response){
+	   
+	   List<EntityAnnotation> res_list = new ArrayList<>();
+	   List<Integer> midpoints = new ArrayList<>();
+	   int m = 0;
+	   
+	   for(int i = 1; i < cloud_response.size(); i++) {
+		   if(Pattern.matches("^[0-9]{0,5}\\.[0-9]{2}$",cloud_response.get(i).getDescription())) {
+			   res_list.add(cloud_response.get(i));
+		   }
+	   }
+	   
+	   for(EntityAnnotation annote : res_list) {
+		   midpoints.add(get_mid_point_x(annote));
+	   }
+	   
+	   //System.out.println(midpoints);
+	   
+	   for(Integer midpoint : midpoints) {
+		   m = m + midpoint;
+	   }
+	   
+	   float avg = (m / midpoints.size());
+	   
+	   for(int i = 0; i < res_list.size(); i++) {
+		  if(get_mid_point_x(res_list.get(i)) < avg) {
+			  res_list.remove(i);
+		  }
+	   }
+	   return res_list;
+   }
+   
+   public static List<List<Object>> parse(List<EntityAnnotation> cloud_response) {
+	   
+	   List<EntityAnnotation> prices = price_list(cloud_response);
+	   List<String> object = new ArrayList<>();
+	   List<List<Object>> values = new ArrayList();
+	   String date = find_date(cloud_response);
+	   String market = find_market(cloud_response);
+	   //System.out.println(cloud_response);
+	   String res = "";
+	   int tolerance = 15;
+	   
+	   for(int i = 0; i < prices.size(); i++) {
+		   
+		   //price_list.add(prices.get(i).getDescription());
+		   System.out.println(prices.get(i).getDescription());
+		   //System.out.print(cloud_response);
+		   //System.out.print(get_bounds_y(prices.get(i)));
+		   
+		   for(int j = 1; j < cloud_response.size();j++) {
+			   
+			   //System.out.format("%s : %d\n",cloud_response.get(j).getDescription(),(cloud_response.get(j)));
+
+			   if(get_bounds_y(cloud_response.get(j)).get(0) >= get_bounds_y(prices.get(i)).get(0)-tolerance && get_bounds_y(cloud_response.get(j)).get(1) <= get_bounds_y(prices.get(i)).get(1)+tolerance) {
+				      
+				    if(get_max_x(cloud_response.get(j)) <= get_max_x(prices.get(i)) && cloud_response.get(j).getDescription() != prices.get(i).getDescription()) {
+					   res = res + cloud_response.get(j).getDescription() + " ";
+				   }
+			   }
+			   
+		   }
+		   object.add(date);
+		   //System.out.println(date);
+		   object.add(market);
+		   //System.out.println(market);
+		   object.add(res);
+		   object.add("$"+prices.get(i).getDescription());
+		   res = "";
+		   values.add(new ArrayList<Object>(object));
+		   object.clear();
+	   }
+	   //System.out.println(values);
+	   return values;
+   }
+   
+   /*public static void parse(List<EntityAnnotation> cloud_response){
+	   String[] temp = item_list(cloud_response).split("\n");
+	   List<String> item_list = Arrays.asList(temp);
+	   
+	   List<String> items = new ArrayList<>();
+	   List<String> prices = new ArrayList<>();
+	   
+	   
+	   Pattern pattern = Pattern.compile("[0-9]{5,}");
+	   Pattern dollar = Pattern.compile("^[0-9]{0,5}\\.[0-9]{2}$");
+	   
+	   
+	   for(int i = 0; i < item_list.size(); i++) {
+		   Matcher matcher = pattern.matcher(item_list.get(i));
+		   boolean matchFound = matcher.find();
+			   
+		   if(matchFound){
+			   items.add(item_list.get(i));
+		   }
+	   }
+	   
+	   for(int i = 0; i < items.size(); i++) {
+		   String[] tempo = items.get(i).split(" ");
+		   //System.out.print(Arrays.toString(tempo));
+		   
+	   }
+	   
+	   //System.out.print(item_list);
+	   
+	   
+   }*/
+}
+	
