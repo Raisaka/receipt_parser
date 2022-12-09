@@ -30,7 +30,7 @@ import java.text.SimpleDateFormat;
 
 public class DetectTextGcs {
 	
-	
+	//sus
 	static String[] MARKETS = {"WALMART", "TARGET"};
 	static List<String> MARKETS_LIST = Arrays.asList(MARKETS);
 
